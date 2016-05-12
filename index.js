@@ -1,3 +1,4 @@
 module.exports = function(options, callback){
-	return require('./lib/Instrument')(options);
+	var Instrument = require('./lib/Instrument');
+	return Instrument.createInstrument(options)
 };

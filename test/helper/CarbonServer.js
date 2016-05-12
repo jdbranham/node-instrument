@@ -12,37 +12,40 @@ function CarbonServer() {
 
 CarbonServer.prototype.listen = function(port, cb) {
 	if (!this._server) {
-		this._server = net.createServer(function(socket){
-			var buffer = '';
-			log('Attaching handlers');
-
-			socket.setEncoding('utf8');
-			socket.on('data', function(chunk) {
-				log(chunk);
-				buffer += chunk;
-
-				while (buffer.length) {
-					var index = buffer.indexOf('\n');
-
-					if (index === -1)
-						break;
-
-					var line = buffer.substr(0, index);
-					buffer = buffer.substr(index + 1);
-
-					this._parseLine(line);
-				}
-			}).on('end', function() {
-				this.close();
-			});
-		});
+		log('Creating a new server on port: ' + port);
+		this._server = net.createServer(this._handleSocket.bind(this));
+		
+		this._server.listen(port, cb);
 	}
-	this._server.listen(port, cb);
 };
 
-CarbonServer.prototype.close = function() {
+CarbonServer.prototype._handleSocket = function(socket) {
+	var self = this;
+	var buffer = '';
+
+	socket.setEncoding('utf8');
+	socket.on('data', function(chunk) {
+		buffer += chunk;
+
+		while (buffer.length) {
+			var index = buffer.indexOf('\n');
+
+			if (index === -1)
+				break;
+
+			var line = buffer.substr(0, index);
+			buffer = buffer.substr(index + 1);
+
+			self._parseLine(line);
+		}
+	}).on('end', function() {
+		self.close();
+	});
+};
+
+CarbonServer.prototype.close = function(callback) {
 	log('Closing server');
-	this._server.close();
+	this._server.close(callback);
 };
 
 
