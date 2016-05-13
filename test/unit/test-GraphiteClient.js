@@ -26,8 +26,12 @@ module.exports = {
 	        test.ok(client instanceof GraphiteClient);
 	        test.done();
 	    },
-	    '#takes carbon dsn first and creates lazy socket': function (test) {
-	    	var client = graphite.createClient('plaintext://example.org:8080/');
+	    '#takes carbon properties': function (test) {
+	    	var client = graphite.createClient({
+	    		type: 'udp4',
+	    		carbonPort: 2003,
+	    		carbonHost: '127.0.0.1'
+	    	});
 	        test.ok(client instanceof GraphiteClient);
 	        test.done();
 	    },

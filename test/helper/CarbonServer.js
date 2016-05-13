@@ -8,7 +8,7 @@ var log = function(message) {
 	console.log('[CARBON SERVER] ' + message);
 };
 
-module.exports = CarbonServer;
+module.exports = new CarbonServer();
 function CarbonServer() {
 	this.metrics = [];
 	
@@ -22,8 +22,12 @@ function CarbonServer() {
 	});
 }
 
-CarbonServer.prototype.onMessage = function(onMessageCallback){
-	server.on('message', onMessageCallback);
+CarbonServer.prototype.on = function(eventName, listenerCallback){
+	server.on(eventName, listenerCallback);
+};
+
+CarbonServer.prototype.removeListener = function(eventName, listenerCallback){
+	server.removeListener(eventName, listenerCallback);
 };
 
 CarbonServer.prototype.listen = function(port, cb) {

@@ -1,12 +1,11 @@
 var common = require('../common');
 var assert = require('assert');
-var CarbonServer = require('../helper/CarbonServer');
+var server = require('../helper/CarbonServer');
 var path = require('path');
 var instrument = common.instrument;
 var prefix = common.instrumentOptions.prefix;
 var suffix = common.instrumentOptions.suffix;
 
-var server = new CarbonServer();
 var metricArray = [];
 var metrics = {
 	foo : 1,
@@ -29,17 +28,15 @@ var parseLine = function(line) {
 
 module.exports = {
 	setUp : function(callback) {
-		server.listen(common.port, function() {
-			callback();
-		});
-	},
-	tearDown : function(callback) {
-		server.close();
-		server = null;
 		callback();
 	},
-	fullIntegration : function(test) {
-		server.onMessage(function(buffer, remote) {
+	tearDown : function(callback) {
+		callback();
+	},
+	'# Manual Send' : function(test) {
+		
+		var onMessage = function(buffer, remote) {
+			server.removeListener('message', onMessage);
 			var message = buffer.toString();
 			while (message.length) {
 				var index = message.indexOf('\n');
@@ -70,12 +67,24 @@ module.exports = {
 			test.ok(metric.timestamp - 10000 <= Date.now() / 1000);
 			console.log('completed assertions');
 			return test.done();
-		});
+		};
+		
+		server.on('message', onMessage);
 
-		test.expect(12);
 		instrument.addObject(metrics);
 		instrument.send();
 		console.log('beginning assertions');
 
+	},
+	'# Interval Send': function(test) {
+		var onMessage = function(buffer, remote) {
+			server.removeListener('message', onMessage);
+			test.ok(buffer != null);
+			test.done();
+		};
+		server.on('message', onMessage);
+		instrument.send();
+		instrument.addObject(metrics);
+		instrument.start();
 	}
 }
