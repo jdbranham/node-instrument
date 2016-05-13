@@ -1,4 +1,8 @@
-var net = require('net');
+var dgram = require('dgram');
+var server = dgram.createSocket('udp4');
+var common = require('../common');
+var PORT = common.instrumentOptions.carbonPort;
+var HOST = common.instrumentOptions.carbonHost;
 
 var log = function(message) {
 	console.log('[CARBON SERVER] ' + message);
@@ -7,53 +11,27 @@ var log = function(message) {
 module.exports = CarbonServer;
 function CarbonServer() {
 	this.metrics = [];
-	this._server = null;
+	
+	server.on('listening', function () {
+	    var address = server.address();
+	    console.log('UDP Server listening on ' + address.address + ":" + address.port);
+	});
+
+	server.on('message', function (message, remote) {
+	    console.log(remote.address + ':' + remote.port +' - ' + message);
+	});
 }
 
-CarbonServer.prototype.listen = function(port, cb) {
-	if (!this._server) {
-		log('Creating a new server on port: ' + port);
-		this._server = net.createServer(this._handleSocket.bind(this));
-		
-		this._server.listen(port, cb);
-	}
+CarbonServer.prototype.onMessage = function(onMessageCallback){
+	server.on('message', onMessageCallback);
 };
 
-CarbonServer.prototype._handleSocket = function(socket) {
-	var self = this;
-	var buffer = '';
-
-	socket.setEncoding('utf8');
-	socket.on('data', function(chunk) {
-		buffer += chunk;
-
-		while (buffer.length) {
-			var index = buffer.indexOf('\n');
-
-			if (index === -1)
-				break;
-
-			var line = buffer.substr(0, index);
-			buffer = buffer.substr(index + 1);
-
-			self._parseLine(line);
-		}
-	}).on('end', function() {
-		self.close();
-	});
+CarbonServer.prototype.listen = function(port, cb) {
+	log('Binding server on port: ' + port);
+	server.bind(PORT, HOST, cb);
 };
 
 CarbonServer.prototype.close = function(callback) {
 	log('Closing server');
-	this._server.close(callback);
-};
-
-
-CarbonServer.prototype._parseLine = function(line) {
-	var parts = line.split(/ /g);
-	this.metrics.push({
-		path : parts[0],
-		value : parts[1],
-		timestamp : parseInt(parts[2], 10),
-	});
+	server.close(callback);
 };

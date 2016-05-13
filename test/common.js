@@ -1,27 +1,18 @@
 var common = exports;
 var path   = require('path');
-var net = require('net');
 
-var portrange = 45032
-
-function getPort (cb) {
-  var port = portrange
-  portrange += 1
-
-  var server = net.createServer()
-  server.listen(port, function (err) {
-    server.once('close', function () {
-      cb(port)
-    })
-    server.close()
-  })
-  server.on('error', function (err) {
-    getPort(cb)
-  })
+common.port = process.env.NI_CARBON_PORT || 45032;
+common.instrumentOptions = {
+	carbonHost : process.env.NI_CARBON_HOST || '127.0.0.1',
+	carbonPort : common.port,
+	verbose : process.env.NI_CARBON_PORT || true,
+	prefix : process.env.NI_PREFIX || 'prefix',
+	suffix : process.env.NI_SUFFIX || 'suffix',
+	interval : process.env.NI_INTERVAL || 3000,
+	callback : function(err) {
+		if(err) console.log(err);
+	}
 }
-getPort(function(port) {
-	common.port = port;
-});
 
 common.dir      = {}
 common.dir.root = path.dirname(__dirname);
@@ -31,3 +22,4 @@ common.graphite  = require(common.dir.lib + '/GraphiteClient');
 
 common.carbonDsn = 'plaintext://localhost:' + common.port + '/';
 common.carbonClient = require(common.dir.lib + '/CarbonClient');
+common.instrument = require(common.dir.root)(common.instrumentOptions);

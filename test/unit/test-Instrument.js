@@ -5,23 +5,16 @@
  */
 var common = require('../common'),
 	sinon = require('sinon'),
-	GraphiteClient = common.graphite;
+	instrument = common.instrument,
+	prefix = common.instrumentOptions.prefix,
+	suffix = common.instrumentOptions.suffix;
 
-var stubbedGraphiteClient = sinon.createStubInstance(GraphiteClient);
-
-var instrumentOptions = {
-		carbonHost: '127.0.0.1',
-		carbonPort: 123,
-    	verbose: true,
-    	prefix: 'prefix',
-    	suffix: 'suffix',
-    	interval: 3000,
-    	callback: function(msg){
-    		log(msg);
-    	},
-    	graphiteClient: stubbedGraphiteClient
-    }
-
+var _graphiteClient = instrument._graphiteClient;
+var mockGraphiteClient = {
+	write: function(message, callback){
+		log('MOCK graphite: ' + message);
+	}
+};
 
 var metrics = {
 		foo : 1,
@@ -39,57 +32,65 @@ var log = function(message){
 
 module.exports = {
 	    setUp: function (callback) {
+	    	instrument.setGraphiteClient(mockGraphiteClient);
+	    	instrument.send();
 	        callback();
 	    },
 	    tearDown: function (callback) {
 	        // clean up
+	    	instrument._graphiteClient = _graphiteClient;
 	        callback();
 	    },
 	    '#default constructor': function(test) {
-	    	var instrument = require(common.dir.root)();	    		
-	    	test.ok(instrument.options != null);
-	        instrument.stop();
+	    	var _instrument = require(common.dir.lib + '/Instrument').createInstrument();	    		
+	    	test.ok(_instrument.options != null);
 	        test.done();
 	    },
 	    '#constructor with options': function(test) {
-    		var instrument = common.instrument(instrumentOptions);
-        	test.equal(instrument.options.carbonHost, instrumentOptions.carbonHost);
-	        test.equal(instrument.options.carbonPort, instrumentOptions.carbonPort);
-	        test.equal(instrument.options.verbose, instrumentOptions.verbose);
-	        test.equal(instrument.options.prefix, instrumentOptions.prefix);
-	        test.equal(instrument.options.suffix, instrumentOptions.suffix);
-	        test.equal(instrument.options.interval, instrumentOptions.interval);
-	        test.equal(instrument.options.callback, instrumentOptions.callback);
-	        instrument.stop();
+        	test.equal(instrument.options.carbonHost, common.instrumentOptions.carbonHost);
+	        test.equal(instrument.options.carbonPort, common.instrumentOptions.carbonPort);
+	        test.equal(instrument.options.verbose, common.instrumentOptions.verbose);
+	        test.equal(instrument.options.prefix, common.instrumentOptions.prefix);
+	        test.equal(instrument.options.suffix, common.instrumentOptions.suffix);
+	        test.equal(instrument.options.interval, common.instrumentOptions.interval);
+	        test.equal(instrument.options.callback, common.instrumentOptions.callback);
 	        test.done();
 	    },
 	    '#put': function(test) {
-	    	var instrument = require(common.dir.root)(instrumentOptions);
-	    	log(instrument.graphiteClient);
-	        instrument.put('test', 1);
-	        instrument.stop();
+	    	test.equal(instrument.getQueueSize(), 0);
+	        instrument.put('test.put', 1);
+	        instrument.put('test.put', 1);
+	        test.equal(instrument.getQueueSize(), 1);
+	        test.equal(instrument.getValueByName(prefix +'.test.put.' + suffix), 1);
 	        instrument.send();
+	        test.equal(instrument.getQueueSize(), 0);
 	        test.done();
 	    },
 	    '#putObject': function(test) {
-	    	var instrument = require(common.dir.root)(instrumentOptions);
+	    	test.equal(instrument.getQueueSize(), 0);
 	        instrument.putObject(metrics);
-	        instrument.stop();
+	        test.equal(instrument.getQueueSize(), 3);
 	        instrument.send();
+	        test.equal(instrument.getQueueSize(), 0);
 	        test.done();
 	    },
 	    '#add': function(test) {
-	    	var instrument = require(common.dir.root)(instrumentOptions);
-	        instrument.add('test', 1);
-	        instrument.stop();
+	    	test.equal(instrument.getQueueSize(), 0);
+	        instrument.add('test.add', 1);
+	        instrument.add('test.add', 1);
+	        instrument.add('test.add', 1);
+	        test.equal(instrument.getQueueSize(), 1);
+	        test.equal(instrument.getValueByName(prefix +'.test.add.' + suffix), 3);
 	        instrument.send();
+	        test.equal(instrument.getQueueSize(), 0);
 	        test.done();
 	    },
 	    '#addObject': function(test) {
-	    	var instrument = require(common.dir.root)(instrumentOptions);
+	    	test.equal(instrument.getQueueSize(), 0);
 	        instrument.addObject(metrics);
-	        instrument.stop();
+	        test.equal(instrument.getQueueSize(), 3);
 	        instrument.send();
+	        test.equal(instrument.getQueueSize(), 0);
 	        test.done();
 	    }
 };
