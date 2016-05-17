@@ -34,9 +34,10 @@ Library to instrument your node application for graphite reporting
     instrument.start();
     instrument.addObject({myMetric: 1});
     
-When using the interval reporting, the 'put' and 'add' methods act slightly different.  
+## Put/Add
+The 'put' and 'add' methods act slightly different.  
 `put` and `putObject` - replaces the value of a metric if it already exists in the queue.  
-`add` and `addObject` - adds the metric value to any existing metric in the queue.
+`add` and `addObject` - adds to the value of a metric if it already exists in the queue.
     
 ## Name/Value metrics
 
