@@ -54,3 +54,58 @@ The 'put' and 'add' methods act slightly different.
     								   down: 1
     								   }
     								});
+
+
+## Methods
+
+### add: function()
+Add metric name/values together
+
+    instrument.add('server.metric1', 1); // 'server.metric1' == 1
+	instrument.add('server.metric1', 1); // 'server.metric1' == 2
+	instrument.add('server.metric1', 1); // 'server.metric1' == 3
+	
+
+### addObject: function()
+Add metric object/values together
+
+	instrument.addObject({myMetric: {sub: 1}}); // 'myMetric.sub' == 1
+	instrument.addObject({myMetric: {sub: 1}}); // 'myMetric.sub' == 2
+	instrument.addObject({myMetric: {sub: 1}}); // 'myMetric.sub' == 3
+
+### getQueueAsText: function()
+Returns a text readout of the current queue
+
+### getQueueSize: function()
+Returns the number of metrics waiting in queue
+
+### getValueByName: function()
+Returns the current value of a metric in the queue
+
+	instrument.getValueByName('myMetric.sub'); // number
+
+### log: function()
+Internal logging function
+
+### put: function()
+Inserts or replaces the value of a metric in queue
+
+### putObject: function()
+Inserts or replaces each flattened metric in a queue
+
+### send: function()
+Manually flush the node-instrument queue and send to Graphite
+
+	instrument.send(); // Flushes the internal queue to the Graphite instance
+
+### sendCallback: function()
+Internal function to execute the options.callback
+
+### setGraphiteClient: function()
+Convenience method for setting the Graphite Client after node-instrument has been initialized 
+
+### start: function()
+Start the interval reporting of node-instrument
+
+### stop: function()
+Stops the interval reporting of node-instrument
