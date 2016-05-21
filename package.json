@@ -1,6 +1,6 @@
 {
   "name": "node-instrument",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A library to instrument your node application for Graphite reporting",
   "main": "index.js",
   "engine": "node 0.12.x",
@@ -25,9 +25,9 @@
   },
   "homepage": "https://github.com/jdbranham/node-instrument#readme",
   "dependencies": {
-    "sinon": "^1.17.4"
   },
   "devDependencies": {
+    "sinon": "^1.17.4",
     "nodeunit": "0.9.x"
   }
 }

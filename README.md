@@ -3,7 +3,7 @@ Library to instrument your node application for graphite reporting
 
 
 ## Installation 
-`npm install jdbranham/node-instrument`
+`npm install node-instrument`
 
 
 ## Usage
