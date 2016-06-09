@@ -80,6 +80,7 @@ module.exports = {
 		var onMessage = function(buffer, remote) {
 			server.removeListener('message', onMessage);
 			test.ok(buffer != null);
+			instrument.stop();
 			test.done();
 		};
 		server.on('message', onMessage);

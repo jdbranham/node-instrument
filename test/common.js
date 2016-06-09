@@ -9,6 +9,7 @@ common.instrumentOptions = {
 	prefix : process.env.NI_PREFIX || 'prefix',
 	suffix : process.env.NI_SUFFIX || 'suffix',
 	interval : process.env.NI_INTERVAL || 3000,
+	multicast : '0.0.0.0',
 	callback : function(err) {
 		if(err) console.log(err);
 	}
