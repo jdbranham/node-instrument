@@ -14,12 +14,13 @@ Library to instrument your node application for graphite reporting
 	var options = {
 		carbonHost : '127.0.0.1',
 		carbonPort : 2003,
-		type : 'udp4',
+		type : 'udp4', // [udp4, tcp4]
 		prefix : '',
 		suffix : '',
 		verbose : false,
 		interval : 5000,
-		callback : null
+		callback : null,
+		localAddress: '0.0.0.0' // for tcp binding to specific network adapter
 	};
 	
 ## Manual Reporting
@@ -50,10 +51,10 @@ The 'put' and 'add' methods act slightly different.
     instrument.addObject({myMetric: {sub: 1}});
     // or 
     instrument.addObject({myMetric: {sub: 1}, 
-    								deep: {
-    								   down: 1
-    								   }
-    								});
+			    								deep: {
+			    								   down: 1
+			    								   }
+			    								});
 
 
 ## Methods
