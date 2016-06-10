@@ -6,7 +6,7 @@ var suffix = common.instrumentOptions.suffix;
 var util = require('util');
 var when = require('when');
 
-var udpServer, tcpServer;
+var carbonServer;
 
 var metricArray = [];
 var metrics = {
@@ -29,40 +29,27 @@ var parseLine = function(line) {
 };
 
 var log = function(msg){
-	console.log('[test-send] '+ msg);
+	if(process.env.NI_VERBOSE)
+		console.log('[test-send] '+ msg);
 }
 
 var startServers = function(){
-	log('Entering startServers');
-	var deferreds = [];
-
-	var tcpServerPromise = when.promise(function(resolve, reject){
-		require('../helper/CarbonServer')({port: common.port2, protocol: 'tcp4'}, function(serverErr, server){
-			if(serverErr){
-				console.error(serverErr);
-				return reject(serverErr);
-			} 
-			tcpServer = server;
+	log('Creating new CarbonServer');
+	
+	var carbonServerPromise = when.promise(function(resolve, reject){
+		require('../helper/CarbonServer')({port: common.port}).then(function success(server){
+			log('assigning returned server to local variable "carbonServer"');
+			carbonServer = server;
 			return resolve();
+		}, function failure(err){
+			console.error(util.inspect(err));
+			return reject(err);
 		});
 	});
-	deferreds.push(tcpServerPromise);
 	
-	var udpServerPromise = when.promise(function(resolve, reject){
-		require('../helper/CarbonServer')({port: common.port}, function(serverErr, server){
-			if(serverErr){
-				console.error(serverErr);
-				return reject(serverErr);
-			} 
-			udpServer = server;
-			return resolve();
-		});
-	});
-	deferreds.push(udpServerPromise);
-	
-	log('Created server promises' + util.inspect(deferreds));
+	log('Created carbonServer promise' + util.inspect(carbonServerPromise));
 
-	return when.all(deferreds);
+	return carbonServerPromise;
 };
 
 describe('integration tests', function(){
@@ -71,25 +58,22 @@ describe('integration tests', function(){
 		log('beforeAll');
 		startServers().then(function(){
 			done();
+		}, function failure(err){
+			console.error(err);
+			done(err);
 		});
 	});
 	
 	after(function(done){
-		udpServer.close();
-		tcpServer.close();
+		carbonServer.close();
 		done();
 	});
 	
 	describe('udp', function(){
 		it('should send manually', function(done){
-			var instrument = common.instrument({
-				callback: function(){
-					instrument.stop();
-					instrument.close();
-				}
-			});
+			var instrument = common.instrument();
 			var onMessage = function(buffer, remote) {
-				udpServer.removeListener('message', onMessage);
+				carbonServer.removeListener('udpMessage', onMessage);
 				var message = buffer.toString();
 				while (message.length) {
 					var index = message.indexOf('\n');
@@ -118,32 +102,28 @@ describe('integration tests', function(){
 				metric.value.should.be.exactly('3');
 				(metric.timestamp + 10000 >= Date.now() / 1000).should.be.true();
 				(metric.timestamp - 10000 <= Date.now() / 1000).should.be.true();
-				console.log('completed assertions');
+				log('completed assertions');
 				return done();
 			};
 			
-			udpServer.on('message', onMessage);
+			instrument.setCallback(null);
+			carbonServer.on('udpMessage', onMessage);
 			instrument.addObject(metrics);
 			instrument.send();
-			console.log('beginning assertions');
+			log('beginning assertions');
 			
 		});
 		
 		it('should send on an interval', function(done){
-			var instrument = common.instrument({
-				callback: function(){
-					instrument.stop();
-					instrument.close();
-				}
-			});
+			var instrument = common.instrument();
 			var onMessage = function(buffer, remote) {
-				udpServer.removeListener('message', onMessage);
+				carbonServer.removeListener('udpMessage', onMessage);
+				instrument.stop();
 				buffer.should.not.be.null();
 				return done();
 			};
-			
-			udpServer.on('message', onMessage);
-			instrument.send();
+			instrument.setCallback(null);
+			carbonServer.on('udpMessage', onMessage);
 			instrument.addObject(metrics);
 			instrument.start();
 		});
@@ -151,27 +131,22 @@ describe('integration tests', function(){
 	
 	describe('tcp', function(){
 		it('should send via tcp', function(done){
-			var instrument = common.instrument({
-				callback: function(){
-					instrument.stop();
-					instrument.close();
-				},
-				type: 'tcp4', 
-				carbonHost: common.instrumentOptions.carbonHost, 
-				carbonPort: common.port
+			var instrument = new common.instrument({
+				type: 'tcp4',
+				localAddress: '0.0.0.0',
+				carbonHost: '127.0.0.1',
+				carbonPort: common.instrumentOptions.carbonPort
 			});
-			
-			var onMessage = function(buffer) {
-				log('tcp message handled');
-				tcpServer.removeListener('data', onMessage);
-				buffer.should.not.be.null();
+			var onMessage = function(err, bytes) {
+				log(err);
+				log(bytes);
+				should.not.be.null(bytes);
 				return done();
 			};
-			
-			tcpServer.on('data', onMessage);
-			instrument.send();
+
+			instrument.setCallback(onMessage);
 			instrument.addObject(metrics);
-			instrument.start();
+			instrument.send();
 		});
 	});
 

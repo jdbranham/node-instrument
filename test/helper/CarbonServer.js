@@ -1,11 +1,9 @@
 var dgram = require('dgram'),
 	common = require('../common'),
-	net = require('net'),
 	util = require('util'),
-	protocol = {
-	udp4: 'udp4',
-	tcp4: 'tcp4'
-};
+	net = require('net'),
+	EventEmitter = require('events'),
+	when = require('when');
 
 
 var log = function(message, isErr) {
@@ -13,93 +11,119 @@ var log = function(message, isErr) {
 	if(isErr){
 		console.error(logPrefix + message);
 	} else{
-		console.log(logPrefix + message);
+		if(process.env.NI_VERBOSE)
+			console.log(logPrefix + message);
 	}
 };
 
 
-function CarbonServer(options, next) {
+/**
+ * Test server 
+ * 
+ * events -
+ * 	udpMessage
+ * 	tcpMessage
+ * 
+ */
+function CarbonServer(options) {
+	EventEmitter.call(this);
 	var defaults = {
-			protocol: protocol.udp4, // or tcp4
 			port: common.instrumentOptions.carbonPort,
 			host: common.instrumentOptions.carbonHost,
 	};
 	
 	log('entering constructor');
-	if(!options && !next){
-		throw new Error('options and a callback are required');
-	}
 	log('extending options');
+	log('inspecting self: ');
+	log(util.inspect(this, {showHidden: true, colors:true}));
 	options = util._extend(defaults, options);
 	var _self = this;
-	this.metrics = [];
 	this.options = options;
 	
-	if(options.protocol == protocol.udp4){
-		log('creating udp server');
-		this.createUdp4Server(options, next);
-	} else if(options.protocol == protocol.tcp4){
-		log('creating tcp server');
-		this.createTcpServer(options, next);
-	} else {
-		return next(Error('invalid protocol'));
-	}
+	var deferreds = [];	
+
+	deferreds.push(_self.createTcpServer(options));
+	deferreds.push(_self.createUdp4Server(options));
+	
+	log('Created server promises' + util.inspect(deferreds));
+	
+	var promise = when.promise(function(resolve, reject){
+		when.all(deferreds).then(function(){
+			log('inspecting servers: ' + util.inspect(_self.tcpServer) + '\n\n' + util.inspect(_self.udpServer));
+			return resolve(_self);
+		})
+	})
+	return promise;
 }
 
-CarbonServer.prototype.createUdp4Server = function(options, next){
+util.inherits(CarbonServer, EventEmitter);
+
+CarbonServer.prototype.createTcpServer = function(options){
 	var _self = this;
-	log('creating datagram socket');
-	this.server = dgram.createSocket('udp4');
-
-	log('attaching message event to udp server');
-	this.server.on('message', function (message, remote) {
-	    log(remote.address + ':' + remote.port +' - ' + message);
+	var promise = when.promise(function(resolve, reject){
+		log('creating tcp server');
+		
+		var server = net.createServer(function(sock){
+			log('client connected: ' + sock.remoteAddress +':'+ sock.remotePort);
+			log('attaching data event to tcp server');
+			sock.pipe(sock);
+			sock.on('data', function (bytes) {
+			    log('TCP server received message: ' + bytes);
+			    sock.write(bytes);
+			    _self.emit('tcpMessage', bytes);
+			});
+		}).listen({
+			  host: options.host,
+			  port: options.port,
+			  exclusive: false
+			});
+		
+		server.on('listening', function(){
+			log(util.inspect(_self.options));
+			log('TCP Server listening on ' + _self.options.host + ":" + _self.options.port);
+			_self.tcpServer = server;
+			return resolve(server);
+		});
 	});
-	this.server.bind(options.port, options.host, function(err){
-		if(err){
-			return next(err);
-		}
-		var address = _self.server.address();
-		log('UDP Server listening on ' + address.address + ":" + address.port);
-		return next(null, _self);
-	});
+	return promise;	
 };
 
-CarbonServer.prototype.createTcpServer = function(options, next){
+CarbonServer.prototype.createUdp4Server = function(options){
 	var _self = this;
-	this.server = net.createServer(function(c){
-		log('TCP server received message: ' + util.inspect(c));
-		c.on('end', function() {
-		    log('client disconnected');
-		  });
-		options.callback && options.callback();
-	});
-	this.server.listen({
-		host: options.host,
-		port: options.port
-	}, function(err){
-		if(err){
-			log(err, true);
-			return next(err);
-		}
-		log('TCP Server listening on ' + options.host + ":" + options.port);
-		return next(null, _self);
-	});
-};
+	var promise = when.promise(function(resolve, reject){
+		log('creating datagram socket');
+		var server = dgram.createSocket('udp4');
 
-CarbonServer.prototype.on = function(eventName, listenerCallback){
-	this.server.on(eventName, listenerCallback);
-};
-
-CarbonServer.prototype.removeListener = function(eventName, listenerCallback){
-	this.server.removeListener(eventName, listenerCallback);
+		log('attaching message event to udp server');
+		server.on('message', function (message, remote) {
+		    log('UDP server received message: ' + remote.address + ':' + remote.port +' - ' + message);
+		    _self.emit('udpMessage', message, remote);
+		});
+		server.bind({
+			port: options.port, 
+			address: options.host,
+			exclusive: false }, function(err){
+			if(err){
+				return reject(err);
+			}
+			var address = server.address();
+			log('UDP Server listening on ' + address.address + ":" + address.port);
+			_self.udpServer = server;
+			return resolve(server);
+		});
+	});
+	
+	return promise;
 };
 
 CarbonServer.prototype.close = function(callback) {
-	this.server.close(function(err){
-		this.server = null;
-		callback && callback();
+	this.tcpServer.close(function(err){
+		this.tcpServer = null;
 	});
+	this.udpServer.close(function(err){
+		this.udpServer = null;
+	});
+	callback && callback();
 };
 
 

@@ -16,16 +16,6 @@ describe('Carbon', function(){
         done();
 	});
 	
-	it('should closes socket if it has on', function(done){
-		var socket = sinon.stub({close: function() {}});
-        var client = new CarbonClient({socket: socket});
-        client.close();
-        return done();
-	});
+	it('should write some metrics');
 	
-	it('should not crash if it has no socket', function(done){
-		var client = new CarbonClient();
-		client.close();
-		return done();
-	});
 });
