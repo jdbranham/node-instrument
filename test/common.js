@@ -1,7 +1,9 @@
 var common = exports;
 var path   = require('path');
+var util = require('util');
 
 common.port = process.env.NI_CARBON_PORT || 45032;
+common.port2 = process.env.NI_CARBON_PORT2 || 45033;
 common.instrumentOptions = {
 	carbonHost : process.env.NI_CARBON_HOST || '127.0.0.1',
 	carbonPort : common.port,
@@ -9,10 +11,7 @@ common.instrumentOptions = {
 	prefix : process.env.NI_PREFIX || 'prefix',
 	suffix : process.env.NI_SUFFIX || 'suffix',
 	interval : process.env.NI_INTERVAL || 3000,
-	//multicast : $multicast_ip_address, // either false or ip address
-	broadcast: '127.0.0.1',
-	localIp: '127.0.0.1',
-	localPort: '8000',
+	localIp: process.env.NI_LOCALIP || '0.0.0.0',
 	callback : function(err) {
 		if(err) console.log(err);
 	}
@@ -26,4 +25,8 @@ common.graphite  = require(common.dir.lib + '/GraphiteClient');
 
 common.carbonDsn = 'plaintext://localhost:' + common.port + '/';
 common.carbonClient = require(common.dir.lib + '/CarbonClient');
-common.instrument = require(common.dir.root)(common.instrumentOptions);
+common.instrument = function(options){
+	options = options || {};
+	var _options = util._extend(common.instrumentOptions, options);
+	return new require(common.dir.root)(_options);
+};

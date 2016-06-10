@@ -1,10 +1,7 @@
 'use strict';
 
-var nodeunit = require('nodeunit'),
-	common = require('./common'),
-	reporter = nodeunit.reporters.default,
-	path = require('path'),
-	server = require('./helper/CarbonServer');
+require('should');
+var common = require('./common');
 
 function dumpError(err) {
 	if (typeof err === 'object') {
@@ -25,17 +22,6 @@ function dumpError(err) {
 process.on('uncaughtException', function(err) {
 	dumpError(err);
     process.exit(1);
-});
-
-nodeunit.on('done', function(){
-	server.close(function(){
-		process.exit(0);
-	});
-});
-
-server.listen(common.port, function() {
-	reporter.run([path.join(__dirname, 'unit'),
-	              path.join(__dirname, 'integration')]);
 });
 
 

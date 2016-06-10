@@ -1,0 +1,6 @@
+--reporter spec
+--recursive
+--growl
+--require ./test/run.js
+--timeout 12000
+--watch
