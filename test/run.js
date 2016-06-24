@@ -4,6 +4,7 @@ require('should');
 var common = require('./common');
 
 function dumpError(err) {
+	console.error('Process Erred: ' + process.pid);
 	if (typeof err === 'object') {
 		if (err.message) {
 			console.error('\nMessage: ' + err.message);
@@ -21,7 +22,6 @@ function dumpError(err) {
 
 process.on('uncaughtException', function(err) {
 	dumpError(err);
-    process.exit(1);
 });
 
 
