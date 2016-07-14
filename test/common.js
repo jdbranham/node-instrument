@@ -9,7 +9,7 @@ common.instrumentOptions = {
 	verbose : process.env.NI_VERBOSE || true,
 	prefix : process.env.NI_PREFIX || 'prefix',
 	suffix : process.env.NI_SUFFIX || 'suffix',
-	interval : process.env.NI_INTERVAL || 1000,
+	interval : process.env.NI_INTERVAL || 500,
 	localAddress: process.env.NI_LOCALADDRESS || '0.0.0.0',
 	callback : function(err) {
 		if(err) console.log(err);
