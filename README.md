@@ -51,10 +51,10 @@ The 'put' and 'add' methods act slightly different.
     instrument.addObject({myMetric: {sub: 1}});
     // or 
     instrument.addObject({myMetric: {sub: 1}, 
-			    								deep: {
-			    								   down: 1
-			    								   }
-			    								});
+		deep: {
+		   down: 1
+		   }
+		});
 
 
 ## Methods
